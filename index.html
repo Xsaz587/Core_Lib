@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Core Code Library v2</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --card-bg: #111;
+            --neon-green: #00ff66;
+            --neon-red: #ff0044;
+            --uib-color: var(--neon-green); /* Цвет твоего лоадера */
+        }
+
+        body {
+            background: var(--bg);
+            color: #eee;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* --- ЛОАДЕР И ОВЕРЛЕЙ --- */
+        #loader-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: var(--bg); display: flex; justify-content: center;
+            align-items: center; z-index: 9999;
+        }
+
+        /* Твой стиль лоадера */
+        .three-body { --uib-size: 45px; --uib-speed: 0.8s; position: relative; display: inline-block; height: var(--uib-size); width: var(--uib-size); animation: spin78236 calc(var(--uib-speed) * 2.5) infinite linear; }
+        .three-body__dot { position: absolute; height: 100%; width: 30%; }
+        .three-body__dot:after { content: ''; position: absolute; height: 0%; width: 100%; padding-bottom: 100%; background-color: var(--uib-color); border-radius: 50%; }
+        .three-body__dot:nth-child(1) { bottom: 5%; left: 0; transform: rotate(60deg); transform-origin: 50% 85%; }
+        .three-body__dot:nth-child(1)::after { bottom: 0; left: 0; animation: wobble1 var(--uib-speed) infinite ease-in-out; animation-delay: calc(var(--uib-speed) * -0.3); }
+        .three-body__dot:nth-child(2) { bottom: 5%; right: 0; transform: rotate(-60deg); transform-origin: 50% 85%; }
+        .three-body__dot:nth-child(2)::after { bottom: 0; left: 0; animation: wobble1 var(--uib-speed) infinite calc(var(--uib-speed) * -0.15) ease-in-out; }
+        .three-body__dot:nth-child(3) { bottom: -5%; left: 0; transform: translateX(116.666%); }
+        .three-body__dot:nth-child(3)::after { top: 0; left: 0; animation: wobble2 var(--uib-speed) infinite ease-in-out; }
+        @keyframes spin78236 { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes wobble1 { 0%, 100% { transform: translateY(0%) scale(1); opacity: 1; } 50% { transform: translateY(-66%) scale(0.65); opacity: 0.8; } }
+        @keyframes wobble2 { 0%, 100% { transform: translateY(0%) scale(1); opacity: 1; } 50% { transform: translateY(66%) scale(0.65); opacity: 0.8; } }
+
+        /* --- ФОРМА --- */
+        .admin-box {
+            width: 100%; max-width: 600px; background: var(--card-bg);
+            padding: 25px; border-radius: 15px; border: 1px solid #222; margin-bottom: 40px;
+        }
+
+        input, textarea {
+            width: 100%; background: #000; border: 1px solid #333;
+            color: var(--neon-green); padding: 10px; margin-bottom: 10px;
+            border-radius: 5px; outline: none; box-sizing: border-box;
+        }
+
+        /* --- ТВОЯ КНОПКА --- */
+        .box-button {
+            cursor: pointer; border: 2px solid #000; background-color: #333;
+            padding-bottom: 6px; transition: 0.1s ease-in-out; user-select: none;
+            display: inline-block; margin-top: 10px;
+        }
+        .button { background-color: #eee; border: 2px solid #fff; padding: 5px 15px; color: #000; }
+        .button span { font-size: 1em; font-weight: bold; text-transform: uppercase; }
+        .box-button:active { padding: 0; margin-top: 16px; transform: translateY(6px); }
+
+        .btn-submit {
+            width: 100%; padding: 12px; background: transparent;
+            border: 1px solid var(--neon-green); color: var(--neon-green);
+            cursor: pointer; font-weight: bold; transition: 0.3s;
+        }
+        .btn-submit:hover { background: var(--neon-green); color: #000; }
+
+        /* --- ГРИД И КАРТОЧКИ --- */
+        .grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 30px; width: 100%; max-width: 1200px;
+        }
+
+        .card {
+            background: var(--card-bg); border-radius: 12px;
+            border: 1px solid #222; overflow: hidden;
+            cursor: grab; transition: border 0.3s;
+        }
+        .card:active { cursor: grabbing; }
+        .card.dragging { opacity: 0.5; border: 2px dashed var(--neon-green); }
+
+        .preview-img { width: 100%; height: 180px; object-fit: cover; pointer-events: none; }
+
+        .file-tree {
+            padding: 15px; background: #0c0c0c; font-family: monospace; font-size: 12px;
+        }
+        .tree-item { margin-left: 10px; color: #888; }
+        .tree-item::before { content: "└ "; color: var(--neon-green); }
+
+        .card-info { padding: 15px; border-top: 1px solid #222; }
+        
+        /* Новый стиль для загрузки файла */
+        .file-upload-container {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .file-upload-container input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .file-upload-label {
+            display: inline-block;
+            padding: 8px 15px;
+            background: #333;
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .file-upload-label:hover {
+            background: var(--neon-green);
+            color: #000;
+        }
+        #previewImg {
+            max-width: 100%;
+            max-height: 200px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader-overlay">
+        <div class="three-body">
+            <div class="three-body__dot"></div>
+            <div class="three-body__dot"></div>
+            <div class="three-body__dot"></div>
+        </div>
+    </div>
+
+    <h2 style="letter-spacing: 5px;">PROJECT_MANAGER_V2</h2>
+
+    <div class="admin-box">
+        <div class="file-upload-container">
+            <input type="file" id="imageFile" accept="image/*" onchange="handleImageUpload(event)">
+            <label for="imageFile" class="file-upload-label">Загрузить скриншот</label>
+        </div>
+        <img id="previewImg" alt="Предпросмотр">
+        <input type="hidden" id="imgUrl" placeholder="Ссылка на скриншот">
+        <input type="text" id="siteUrl" placeholder="Ссылка на сайт (URL)">
+        <textarea id="desc" placeholder="Описание проекта..."></textarea>
+        <textarea id="treeData" placeholder="Дерево (через запятую или с новой строки)" rows="3"></textarea>
+        <button class="btn-submit" onclick="addProject()">ДОБАВИТЬ В БАЗУ</button>
+    </div>
+
+    <div class="grid" id="projectGrid"></div>
+
+<script>
+    const grid = document.getElementById('projectGrid');
+    let currentImageFile = null;
+
+    // Функция лоадера
+    function runLoader() {
+        const loader = document.getElementById('loader-overlay');
+        loader.style.display = 'flex';
+        setTimeout(() => {
+            loader.style.display = 'none';
+        }, 1600);
+    }
+
+    // Загрузка
+    window.onload = () => {
+        runLoader();
+        loadProjects();
+    };
+
+    function handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        currentImageFile = file;
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const preview = document.getElementById('previewImg');
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        
+        reader.readAsDataURL(file);
+    }
+
+    function addProject() {
+        const img = document.getElementById('imgUrl').value;
+        const link = document.getElementById('siteUrl').value;
+        const desc = document.getElementById('desc').value;
+        const tree = document.getElementById('treeData').value.split(/[\n,]+/).filter(i => i.trim());
+
+        if (!img && !currentImageFile) return alert("Выберите скриншот!");
+        if (!link) return alert("Заполните ссылку на сайт!");
+
+        let projects = JSON.parse(localStorage.getItem('dragLib') || '[]');
+
+        // Проверка на дубликаты
+        if (projects.some(p => p.link === link)) {
+            alert("Этот проект уже есть в библиотеке!");
+            return;
+        }
+
+        // Если выбран файл, сохраняем его как base64
+        let imageUrl = img;
+        if (currentImageFile) {
+            // Преобразуем файл в base64 для хранения
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imageUrl = e.target.result;
+                saveProject(imageUrl, link, desc, tree);
+            };
+            reader.readAsDataURL(currentImageFile);
+        } else {
+            saveProject(imageUrl, link, desc, tree);
+        }
+    }
+
+    function saveProject(imgUrl, link, desc, tree) {
+        const project = { 
+            id: Date.now(), 
+            img: imgUrl, 
+            link, 
+            desc, 
+            tree 
+        };
+        
+        let projects = JSON.parse(localStorage.getItem('dragLib') || '[]');
+        projects.push(project);
+        localStorage.setItem('dragLib', JSON.stringify(projects));
+        
+        runLoader();
+        setTimeout(loadProjects, 500); // Обновляем список после анимации
+        
+        // Сброс формы
+        document.getElementById('imageFile').value = '';
+        document.getElementById('previewImg').style.display = 'none';
+        document.getElementById('imgUrl').value = '';
+        currentImageFile = null;
+    }
+
+    function renderCard(p) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.draggable = true;
+        card.dataset.id = p.id;
+
+        const treeHtml = p.tree.map(item => `<div class="tree-item">${item.trim()}</div>`).join('');
+
+        card.innerHTML = `
+            <img src="${p.img}" class="preview-img">
+            <div class="file-tree">${treeHtml || 'no_files_logged'}</div>
+            <div class="card-info">
+                <p style="font-size:13px; color:#aaa; margin:0;">${p.desc}</p>
+                <div class="box-button" onclick="window.open('${p.link}', '_blank')">
+                    <div class="button"><span>On site</span></div>
+                </div>
+                <button onclick="deleteProject(${p.id})" style="background:none; border:none; color:var(--neon-red); cursor:pointer; font-size:10px; float:right; margin-top:20px;">DELETE</button>
+            </div>
+        `;
+
+        // События Drag and Drop
+        card.addEventListener('dragstart', () => card.classList.add('dragging'));
+        card.addEventListener('dragend', () => {
+            card.classList.remove('dragging');
+            saveNewOrder();
+        });
+
+        grid.appendChild(card);
+    }
+
+    function loadProjects() {
+        grid.innerHTML = '';
+        const projects = JSON.parse(localStorage.getItem('dragLib') || '[]');
+        projects.forEach(renderCard);
+    }
+
+    // Логика перетаскивания
+    grid.addEventListener('dragover', e => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(grid, e.clientY);
+        const dragging = document.querySelector('.dragging');
+        if (afterElement == null) {
+            grid.appendChild(dragging);
+        } else {
+            grid.insertBefore(dragging, afterElement);
+        }
+    });
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.card:not(.dragging)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    function saveNewOrder() {
+        const currentCards = [...document.querySelectorAll('.card')];
+        const projects = JSON.parse(localStorage.getItem('dragLib') || '[]');
+        const newOrder = currentCards.map(card => {
+            return projects.find(p => p.id == card.dataset.id);
+        });
+        localStorage.setItem('dragLib', JSON.stringify(newOrder));
+    }
+
+    function deleteProject(id) {
+        let projects = JSON.parse(localStorage.getItem('dragLib') || '[]');
+        projects = projects.filter(p => p.id !== id);
+        localStorage.setItem('dragLib', JSON.stringify(projects));
+        loadProjects();
+    }
+</script>
+
+</body>
+</html>
